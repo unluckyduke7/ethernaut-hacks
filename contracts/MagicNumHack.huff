@@ -1,0 +1,7 @@
+/// @title A hack for level 18 (MagicNum) of The Ethernaut
+/// @notice SPDX-License-Identifier: MIT
+/// @author unluckyduke7
+
+#define macro MAIN() = takes (0) returns (0) {
+	0x2a 0x0 mstore 0x20 0x0 return
+}
