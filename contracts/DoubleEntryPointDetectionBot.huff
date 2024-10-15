@@ -1,0 +1,37 @@
+/// @title A Forta detection bot for level 26 (DoubleEntryPoint) of The Ethernaut
+/// @notice SPDX-License-Identifier: MIT
+/// @author unluckyduke7
+
+#define function handleTransaction(address,bytes) nonpayable returns ()
+
+#define constant FORTA_SLOT = FREE_STORAGE_POINTER()
+#define constant VAULT_SLOT = FREE_STORAGE_POINTER()
+
+#define macro VALIDATE_ADDRESS() = takes (1) returns (1) {
+    dup1 0xa0 shr iszero success jumpi 0x0 0x0 revert success:
+}
+
+#define macro CONSTRUCTOR() = takes (0) returns (0) {
+    0x40 dup1 codesize sub 0x0 codecopy                         // []
+
+    0x0 mload VALIDATE_ADDRESS() [FORTA_SLOT] sstore            // []
+    0x20 mload VALIDATE_ADDRESS() [VAULT_SLOT] sstore           // []
+}
+
+#define macro MAIN() = takes (0) returns (0) {
+    0x0 calldataload 0xe0 shr                                   // [selector]
+    __FUNC_SIG(handleTransaction) eq handleTransaction jumpi    // []
+
+    0x0 0x0 revert
+
+    handleTransaction:
+        // Calldata: [sig 0x0-0x4][user 0x4-0x24][data: [ptr 0x24-0x44][len 0x44-0x64][raw: [sig 0x64-0x68][to 0x68-0x88][value 0x88-0xa8][origSender 0xa8-0xc8]]]
+        0xa8 calldataload VALIDATE_ADDRESS()                    // [origSender]
+        [VAULT_SLOT] sload eq raiseAlert jumpi stop             // []
+        
+        raiseAlert:
+            __FUNC_SIG("raiseAlert(address)") 0xe0 shl 0x0 mstore   // []
+            0x4 calldataload 0x4 mstore                             // []
+            0x0 0x0 0x24 0x0 0x0 [FORTA_SLOT] sload gas call        // [success]
+            success jumpi 0x0 0x0 revert success: stop              // []
+}
